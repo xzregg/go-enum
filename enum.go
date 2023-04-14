@@ -8,25 +8,27 @@ import (
 	"time"
 )
 
-type EnumInterFace interface {
+type ItemEnumMap map[any]string
+
+type InterFaceEnum interface {
 	InitMap(enumName string)
 	GetLabel(key any) string
 	SetLabel(key any, label string)
-	GetEnumMap() map[any]string
+	GetEnumMap() ItemEnumMap
 	GetEnumName() string
 }
 
 type Enum struct {
-	EnumMap  map[any]string
+	EnumMap  ItemEnumMap
 	enumName string
 }
 
-var AllEnumMap = make(map[string]map[any]string)
+var AllEnumMap = map[string]ItemEnumMap{}
 
 func (e *Enum) InitMap(enumName string) {
 	if e.EnumMap == nil {
 		e.enumName = enumName
-		e.EnumMap = make(map[any]string)
+		e.EnumMap = ItemEnumMap{}
 		AllEnumMap[enumName] = e.EnumMap
 		//		fmt.Printf("%s %p i=%p\n", enumName, AllEnumMap[enumName], e.EnumMap)
 	}
@@ -43,7 +45,7 @@ func (e *Enum) SetLabel(key any, label string) {
 	e.EnumMap[key] = label
 }
 
-func (e *Enum) GetEnumMap() map[any]string {
+func (e *Enum) GetEnumMap() ItemEnumMap {
 	return e.EnumMap
 }
 func (e *Enum) GetEnumName() string {
@@ -118,7 +120,7 @@ func newDefaultFiller(tagLookup string) *defaults.Filler {
 // GenerateEnum
 // 如果一个函数的参数是接口类型，传进去的参数可以是指针，也可以不是指针，这得看你传的对象是怎么实现这个接口类型的
 // 如果实现接口的方法的接收器是指针类型，则传参给接口类型时必需是指针，如果不是，则随便传
-func GenerateEnum[T EnumInterFace](enumStruct T) T {
+func GenerateEnum[T InterFaceEnum](enumStruct T) T {
 	// 使用 reflect 包获取结构体的类型信息
 	t := reflect.TypeOf(enumStruct)
 
