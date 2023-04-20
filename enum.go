@@ -123,17 +123,19 @@ func newDefaultFiller(tagLookup string) *defaults.Filler {
 func GenerateEnum[T InterFaceEnum](enumStruct T) T {
 	// 使用 reflect 包获取结构体的类型信息
 	t := reflect.TypeOf(enumStruct)
-
+	v := reflect.ValueOf(enumStruct)
 	//修改开始
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
+		v = v.Elem()
 	}
+	GetDefaultFiller("key").Fill(enumStruct)
 	// 循环遍历结构体的所有字段
 	for i := 0; i < t.NumField(); i++ {
 		// 获取字段的名称、类型和注释
 		field := t.Field(i)
+		value := v.Field(i)
 		name := field.Name
-
 		key := field.Tag.Get("key")
 		label := field.Tag.Get("label")
 
@@ -151,10 +153,10 @@ func GenerateEnum[T InterFaceEnum](enumStruct T) T {
 				fmt.Printf("field: %s key : %s label is empty\n", name, key)
 				continue
 			}
-			enumStruct.SetLabel(key, label)
+			enumStruct.SetLabel(value.Interface(), label)
 		}
 	}
-	GetDefaultFiller("key").Fill(enumStruct)
+
 	return enumStruct
 }
 

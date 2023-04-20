@@ -35,6 +35,13 @@ func TestEnum_GetLabel(t *testing.T) {
 		FruitVegetable string `key:"label" lable:"果蔬识别"`
 	}{})
 
+	var RoleType = GenerateEnum(&struct {
+		Enum             `key:"role_type" label:"角色类型"`
+		UserAdminType    int `key:"1" label:"超管"`
+		UserMerchantType int `key:"2" label:"高级用户"`
+		UserNormalType   int `key:"3" label:"普通用户"`
+	}{})
+
 	fmt.Printf("%v %v\n", ColorEnum.GetEnumName(), ColorEnum.GetLabel("red"))
 	fmt.Printf("AllEnumMap[\"color\"] i=%p  ColorEnum.EnumMap i=%p\n", AllEnumMap["color"], ColorEnum.GetEnumMap())
 	fmt.Printf("%+v\n", AllEnumMap["color"])
@@ -42,7 +49,7 @@ func TestEnum_GetLabel(t *testing.T) {
 	fmt.Printf("%+v\n", AttachEnum)
 	fmt.Printf("%+v\n", MajorEnum)
 	fmt.Printf("%+v\n", OrderStatus)
-
+	fmt.Printf("%+v\n", RoleType)
 	if ColorEnum.Red != "red" {
 		t.Errorf("ColorEnum.Red != red")
 	}
