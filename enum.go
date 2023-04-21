@@ -1,6 +1,7 @@
 package enum
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mcuadros/go-defaults"
 	"reflect"
@@ -9,6 +10,15 @@ import (
 )
 
 type ItemEnumMap map[any]string
+
+func (i ItemEnumMap) MarshalJSON() ([]byte, error) {
+	tmp := map[string]string{}
+	for k, v := range i {
+		str := fmt.Sprintf("%v", k)
+		tmp[str] = v
+	}
+	return json.Marshal(tmp)
+}
 
 type InterFaceEnum interface {
 	InitMap(enumName string)
@@ -24,6 +34,10 @@ type Enum struct {
 }
 
 var AllEnumMap = map[string]ItemEnumMap{}
+
+func (e *Enum) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.EnumMap)
+}
 
 func (e *Enum) InitMap(enumName string) {
 	if e.EnumMap == nil {
