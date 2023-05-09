@@ -3,9 +3,9 @@ package enum
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mcuadros/go-defaults"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -66,69 +66,57 @@ func (e *Enum) GetEnumName() string {
 	return e.enumName
 }
 
-var defaultFillerMap = map[string]*defaults.Filler{}
+var valueFunc = make(map[reflect.Kind]func(fieldValue *reflect.Value, tagValue string), 0)
 
-func GetDefaultFiller(tagLookup string) *defaults.Filler {
-	defaultFiller, ok := defaultFillerMap[tagLookup]
-	if !ok {
-		defaultFiller = newDefaultFiller(tagLookup)
-		defaultFillerMap[tagLookup] = defaultFiller
-	}
-	return defaultFiller
-}
-
-func newDefaultFiller(tagLookup string) *defaults.Filler {
-	funcs := make(map[reflect.Kind]defaults.FillerFunc, 0)
-	funcs[reflect.Bool] = func(field *defaults.FieldData) {
-		value, _ := strconv.ParseBool(field.TagValue)
-		field.Value.SetBool(value)
+func init() {
+	valueFunc[reflect.Bool] = func(fieldValue *reflect.Value, tagValue string) {
+		value, _ := strconv.ParseBool(tagValue)
+		fieldValue.SetBool(value)
 	}
 
-	funcs[reflect.Int] = func(field *defaults.FieldData) {
-		value, _ := strconv.ParseInt(field.TagValue, 10, 64)
-		field.Value.SetInt(value)
+	valueFunc[reflect.Int] = func(fieldValue *reflect.Value, tagValue string) {
+		value, _ := strconv.ParseInt(tagValue, 10, 64)
+		fieldValue.SetInt(value)
 	}
+	valueFunc[reflect.Int8] = valueFunc[reflect.Int]
+	valueFunc[reflect.Int16] = valueFunc[reflect.Int]
+	valueFunc[reflect.Int32] = valueFunc[reflect.Int]
+	valueFunc[reflect.Int64] = func(fieldValue *reflect.Value, tagValue string) {
 
-	funcs[reflect.Int8] = funcs[reflect.Int]
-	funcs[reflect.Int16] = funcs[reflect.Int]
-	funcs[reflect.Int32] = funcs[reflect.Int]
-	funcs[reflect.Int64] = func(field *defaults.FieldData) {
-		if field.Field.Type == reflect.TypeOf(time.Second) {
-			value, _ := time.ParseDuration(field.TagValue)
-			field.Value.Set(reflect.ValueOf(value))
+		if fieldValue.Type() == reflect.TypeOf(time.Second) {
+			value, _ := time.ParseDuration(tagValue)
+			fieldValue.Set(reflect.ValueOf(value))
 		} else {
-			value, _ := strconv.ParseInt(field.TagValue, 10, 64)
-			field.Value.SetInt(value)
+			value, _ := strconv.ParseInt(tagValue, 10, 64)
+			fieldValue.SetInt(value)
 		}
 	}
-
-	funcs[reflect.Float32] = func(field *defaults.FieldData) {
-		value, _ := strconv.ParseFloat(field.TagValue, 64)
-		field.Value.SetFloat(value)
+	valueFunc[reflect.Float32] = func(fieldValue *reflect.Value, tagValue string) {
+		value, _ := strconv.ParseFloat(tagValue, 64)
+		fieldValue.SetFloat(value)
 	}
 
-	funcs[reflect.Float64] = funcs[reflect.Float32]
-
-	funcs[reflect.Uint] = func(field *defaults.FieldData) {
-		value, _ := strconv.ParseUint(field.TagValue, 10, 64)
-		field.Value.SetUint(value)
+	valueFunc[reflect.Float64] = valueFunc[reflect.Float32]
+	valueFunc[reflect.Uint] = func(fieldValue *reflect.Value, tagValue string) {
+		value, _ := strconv.ParseUint(tagValue, 10, 64)
+		fieldValue.SetUint(value)
 	}
 
-	funcs[reflect.Uint8] = funcs[reflect.Uint]
-	funcs[reflect.Uint16] = funcs[reflect.Uint]
-	funcs[reflect.Uint32] = funcs[reflect.Uint]
-	funcs[reflect.Uint64] = funcs[reflect.Uint]
+	valueFunc[reflect.Uint8] = valueFunc[reflect.Uint]
+	valueFunc[reflect.Uint16] = valueFunc[reflect.Uint]
+	valueFunc[reflect.Uint32] = valueFunc[reflect.Uint]
+	valueFunc[reflect.Uint64] = valueFunc[reflect.Uint]
 
-	funcs[reflect.String] = func(field *defaults.FieldData) {
-		field.Value.SetString(field.TagValue)
+	valueFunc[reflect.String] = func(fieldValue *reflect.Value, tagValue string) {
+		fieldValue.SetString(tagValue)
 	}
+}
 
-	types := make(map[defaults.TypeHash]defaults.FillerFunc, 1)
-	types["time.Duration"] = func(field *defaults.FieldData) {
-		d, _ := time.ParseDuration(field.TagValue)
-		field.Value.Set(reflect.ValueOf(d))
+// 设置枚举值
+func setEnumValue(reflectValue *reflect.Value, tagValue string) {
+	if f, ok := valueFunc[reflectValue.Kind()]; ok {
+		f(reflectValue, tagValue)
 	}
-	return &defaults.Filler{FuncByKind: funcs, FuncByType: types, Tag: tagLookup}
 }
 
 // GenerateEnum
@@ -143,15 +131,23 @@ func GenerateEnum[T InterFaceEnum](enumStruct T) T {
 		t = t.Elem()
 		v = v.Elem()
 	}
-	GetDefaultFiller("key").Fill(enumStruct)
+
 	// 循环遍历结构体的所有字段
 	for i := 0; i < t.NumField(); i++ {
 		// 获取字段的名称、类型和注释
 		field := t.Field(i)
 		value := v.Field(i)
+
 		name := field.Name
 		key := field.Tag.Get("key")
 		label := field.Tag.Get("label")
+		if key == "" && label == "" {
+			splits := strings.SplitN(string(field.Tag), " ", 2)
+			for i := range splits {
+				splits[i] = strings.TrimSpace(splits[i])
+			}
+			key, label = splits[0], splits[1]
+		}
 
 		if name == "Enum" && key != "" {
 			if key != "" {
@@ -167,7 +163,9 @@ func GenerateEnum[T InterFaceEnum](enumStruct T) T {
 				fmt.Printf("field: %s key : %s label is empty\n", name, key)
 				continue
 			}
+			setEnumValue(&value, key)
 			enumStruct.SetLabel(value.Interface(), label)
+
 		}
 	}
 
@@ -179,7 +177,7 @@ var ColorEnum = GenerateEnum(&struct {
 	Enum   `key:"color" label:"颜色"`
 	Red    string `key:"red" label:"红色"`
 	Yellow string `key:"yellow" label:"黄色"`
-	Black  int    `key:"black" label:"黑色"`
-	White  int    `key:"white" label:"白色"`
+	Black  int    `1 黑色`
+	White  string    `white 白色`
 }{})
 */

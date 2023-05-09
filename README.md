@@ -16,35 +16,53 @@ Examples
 A basic example:
 
 ```go
+package enum
+
 import (
-"fmt"
-"github.com/xzregg/go-enum"
-"testing"
+	"encoding/json"
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"github.com/xzregg/go-enum"
 )
 
 func TestEnum_GetLabel(t *testing.T) {
 
-	ColorEnum := enum.GenerateEnum(&struct {
-		enum.Enum `key:"color" label:"颜色"`
-		Red       string `key:"red" label:"红色" choise:"order_status" `
-		Yellow    string `key:"yellow" label:"黄色"`
-		Black     int    `key:"1" label:"黑色"`
-		White     int    `key:"2" label:"白色"`
+	ColorEnum := GenerateEnum(&struct {
+		Enum   `key:"color" label:"颜色"`
+		Red    string `key:"red" label:"红色" choise:"order_status" `
+		Yellow string `key:"yellow" label:"黄色"`
+		Black  int    `key:"1" label:"黑色"`
+		White  int    `2 白色`
+		Blue   int    `3   蓝色`
 	}{})
 
-	fmt.Printf("%v %v\n", ColorEnum.GetEnumName(), ColorEnum.GetLabel("red")) // color 红色
-	fmt.Printf("AllEnumMap[\"color\"] i=%p  ColorEnum.EnumMap i=%p\n", enum.AllEnumMap["color"], ColorEnum.GetEnumMap())
-	fmt.Printf("%+v\n", enum.AllEnumMap["color"]) // map[1:黑色 2:白色 red:红色 yellow:黄色]
-	fmt.Printf("%+v\n", enum.AllEnumMap["color"]["yellow"]) // 黄色
+	var RoleType = GenerateEnum(&struct {
+		Enum             `key:"role_type" label:"角色类型"`
+		UserAdminType    int `key:"1" label:"超管"`
+		UserMerchantType int `2  高级用户`
+		UserNormalType   int `key:"3" label:"普通用户"`
+	}{})
 
-	if ColorEnum.Red != "red" {
-		t.Errorf("ColorEnum.Red != red")
+	fmt.Printf("%v %v\n", ColorEnum.GetEnumName(), ColorEnum.GetLabel("red"))
+	fmt.Printf("AllEnumMap[\"color\"] i=%p  ColorEnum.EnumMap i=%p\n", AllEnumMap["color"], ColorEnum.GetEnumMap())
+	fmt.Printf("%+v\n", AllEnumMap["color"])
+	fmt.Printf("%+v\n", AllEnumMap["color"]["yellow"])
+	fmt.Printf("%+v\n", RoleType)
+
+	assert.Equal(t, ColorEnum.Red, "red", "ColorEnum.Red != red")
+	assert.Equal(t, ColorEnum.White, 2, "ColorEnum.White != 2")
+
+	fmt.Printf("%p\n", &AllEnumMap)
+
+	d, err := json.Marshal(AllEnumMap)
+	if err != nil {
+		fmt.Println(err)
 	}
-	if ColorEnum.White != 2 {
-		t.Errorf("ColorEnum.White != 2")
-	}
+	fmt.Println(string(d))
 
 }
+
 ```
 
 License
